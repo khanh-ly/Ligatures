@@ -9,6 +9,7 @@ import io
 import json
 import os
 import platform
+import re
 import secrets
 import shutil
 import subprocess
@@ -138,7 +139,9 @@ def fontshare_families(data, taken):
     Families Google Fonts already has (open-source fonts Fontshare mirrors) are skipped, so each
     family appears once. Popularity ranks are scaled to Google's range so mixed sorting interleaves.
     """
-    fonts = [f for f in data.get("fonts", []) if f.get("name") and f["name"] not in taken]
+    # Slugs end up in URLs and CSS, so accept only lower-case letters, digits and hyphens.
+    fonts = [f for f in data.get("fonts", []) if f.get("name") and f["name"] not in taken
+             and re.fullmatch(r"[a-z0-9-]+", str(f.get("slug") or ""))]
     scale = max(len(taken), 1) / max(len(fonts), 1)
     popular = {f["slug"]: i + 1 for i, f in enumerate(sorted(fonts, key=lambda f: -(f.get("views") or 0)))}
     trending = {f["slug"]: i + 1 for i, f in enumerate(sorted(fonts, key=lambda f: -(f.get("views_recent") or 0)))}
@@ -351,6 +354,13 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
         pass
 
+    def end_headers(self):
+        # On every response: forbid other sites from framing the app (clickjacking) and MIME sniffing.
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Content-Security-Policy", "frame-ancestors 'none'")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        super().end_headers()
+
     def send_json(self, obj, status=200):
         body = json.dumps(obj).encode()
         self.send_response(status)
@@ -392,10 +402,15 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"error": str(exc)}, 500)
 
     def do_POST(self):
-        if not self.host_ok() or self.headers.get("X-FM-Token") != TOKEN:
+        if not self.host_ok() or not secrets.compare_digest(self.headers.get("X-FM-Token", "").encode(), TOKEN.encode()):
             return self.send_error(403)
         try:
             length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            length = -1
+        if not 0 <= length <= 1_000_000:  # never trust Content-Length: a negative read blocks forever
+            return self.send_error(400)
+        try:
             payload = json.loads(self.rfile.read(length) or b"{}")
             family = payload.get("family", "")
             path = urllib.parse.urlparse(self.path).path

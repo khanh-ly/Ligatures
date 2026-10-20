@@ -29,8 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 
     func startServer() {
         if portIsOpen() {
-            // Another copy of the app is already serving on our port: just use it.
-            loadPage()
+            portInUse()
             return
         }
         guard let url = Bundle.main.url(forResource: "index", withExtension: "html"),
@@ -43,7 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         server.onFailed = { [weak self] error in
             DispatchQueue.main.async {
                 guard let self else { return }
-                if self.portIsOpen() { self.loadPage(); return }
+                if self.portIsOpen() { self.portInUse(); return }
                 self.showError("Couldn't start the font server: \(error.localizedDescription)\nDetails are in ~/Library/Logs/FontManager.log")
             }
         }
@@ -53,6 +52,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         } catch {
             showError("Couldn't start the font server: \(error.localizedDescription)")
         }
+    }
+
+    /// Our port is taken. Only another copy of Ligatures is trusted with it: bring that copy forward and quit.
+    /// Anything else could be an impostor serving its own page, so never load it.
+    func portInUse() {
+        let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
+            .filter { $0 != NSRunningApplication.current }
+        if let other = others.first {
+            other.activate(options: [])
+            NSApp.terminate(nil)
+            return
+        }
+        showError("Another program is using port \(port), so Ligatures can't start.\nQuit that program and open Ligatures again.")
     }
 
     func portIsOpen() -> Bool {
@@ -119,21 +131,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    /// Our own server's pages are the only thing the window may show.
+    func isAppPage(_ url: URL) -> Bool {
+        url.scheme == "http" && url.host == "127.0.0.1" && url.port == port
+    }
+
+    /// Only web links may leave the app: other schemes (file:, app launchers, …) are dropped.
+    func openExternally(_ url: URL) {
+        guard let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http" else { return }
+        NSWorkspace.shared.open(url)
+    }
+
     // Links that leave the app (e.g. "Open on Google Fonts") open in the default browser.
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
                  for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-        if let url = navigationAction.request.url { NSWorkspace.shared.open(url) }
+        if let url = navigationAction.request.url { openExternally(url) }
         return nil
     }
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        if let url = navigationAction.request.url, url.host != "127.0.0.1", navigationAction.navigationType == .linkActivated {
-            NSWorkspace.shared.open(url)
-            decisionHandler(.cancel)
-            return
-        }
-        decisionHandler(.allow)
+        guard let url = navigationAction.request.url else { return decisionHandler(.cancel) }
+        if isAppPage(url) || url.absoluteString == "about:blank" { return decisionHandler(.allow) }
+        if navigationAction.navigationType == .linkActivated { openExternally(url) }
+        decisionHandler(.cancel)  // the window never navigates away from the app itself
     }
 
     func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String,

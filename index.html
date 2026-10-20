@@ -309,6 +309,9 @@ const S = {
 const loadedCss = new Set();
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+// For text inside a quoted CSS string (style attributes and stylesheets): everything except letters, digits,
+// spaces, dots and hyphens becomes a CSS hex escape, so names from the catalogs can't break out of the string.
+const cssStr = (s) => String(s).replace(/[^\w .-]/g, (c) => "\\" + c.codePointAt(0).toString(16) + " ");
 
 // Restore per-browser preferences
 try {
@@ -365,14 +368,14 @@ function loadPreview(f, variants) {
     const face = f.faces[v];
     if (!face || loadedFaces.has(fam + v) || !/^https:\/\/cdn\.fontshare\.com\/[\w\/.-]+$/.test(face.url)) continue;
     loadedFaces.add(fam + v);
-    rules.push(`@font-face { font-family: "${fam}"; src: url("${face.url}") format("woff2"); font-weight: ${parseInt(v) || 400}; font-style: ${v.endsWith("i") ? "italic" : "normal"}; font-display: swap; }`);
+    rules.push(`@font-face { font-family: "${cssStr(fam)}"; src: url("${face.url}") format("woff2"); font-weight: ${parseInt(v) || 400}; font-style: ${v.endsWith("i") ? "italic" : "normal"}; font-display: swap; }`);
   }
   if (rules.length) {
     const style = document.createElement("style");
     style.textContent = rules.join("\n");
     document.head.appendChild(style);
   }
-  return Promise.all(variants.map((v) => document.fonts.load(`${v.endsWith("i") ? "italic " : ""}${parseInt(v) || 400} 16px "${fam}"`).catch(() => {})));
+  return Promise.all(variants.map((v) => document.fonts.load(`${v.endsWith("i") ? "italic " : ""}${parseInt(v) || 400} 16px "${cssStr(fam)}"`).catch(() => {})));
 }
 function variantStyle(v) { return `font-weight:${parseInt(v) || 400};font-style:${v.endsWith("i") ? "italic" : "normal"}`; }
 function variantLabel(v) { const w = parseInt(v) || 400; return `${WEIGHT_NAMES[w] || w} ${w}${v.endsWith("i") ? " Italic" : ""}`; }
@@ -434,7 +437,7 @@ function cardHtml(f) {
       </div>
       <button class="icon-btn ${fav ? "on" : ""}" data-act="fav" data-family="${fam}" title="Favorite">${fav ? "★" : "☆"}</button>
     </div>
-    <div class="sample loading" style="font-family:'${esc(previewFamily(f))}',var(--fallback, sans-serif);font-size:${S.size}px;${variantStyle(v)}">${esc(S.text || DEFAULT_TEXT)}</div>
+    <div class="sample loading" style="font-family:'${cssStr(previewFamily(f))}',var(--fallback, sans-serif);font-size:${S.size}px;${variantStyle(v)}">${esc(S.text || DEFAULT_TEXT)}</div>
   </article>`;
 }
 
@@ -491,7 +494,7 @@ function openDrawer(family, keepScroll) {
   const d = $("#drawer");
   const scroll = keepScroll ? (d.querySelector(".d-body") || {}).scrollTop : 0;
   const fam = esc(f.family);
-  const ff = `font-family:'${esc(previewFamily(f))}',sans-serif`;
+  const ff = `font-family:'${cssStr(previewFamily(f))}',sans-serif`;
   const inst = S.installed[f.family];
   const fontshare = f.source === "fontshare";
   const generic = f.category === "Serif" ? "serif" : f.category === "Monospace" ? "monospace" : f.category === "Handwriting" ? "cursive" : "sans-serif";
@@ -522,10 +525,10 @@ function openDrawer(family, keepScroll) {
         <dt>Library</dt><dd>${SOURCE_NAMES[f.source] || "Google Fonts"}</dd>
         <dt>Category</dt><dd>${esc(f.category)}</dd>
         <dt>Styles</dt><dd>${f.variants.length}</dd>
-        ${f.axes.length ? `<dt>Variable axes</dt><dd>${f.axes.map((a) => `${esc(a.tag)} ${a.min}–${a.max}`).join(", ")}</dd>` : ""}
+        ${f.axes.length ? `<dt>Variable axes</dt><dd>${f.axes.map((a) => `${esc(a.tag)} ${esc(a.min)}–${esc(a.max)}`).join(", ")}</dd>` : ""}
         <dt>Added</dt><dd>${esc(f.dateAdded || "—")}</dd>
         ${fontshare ? "" : `<dt>Updated</dt><dd>${esc(f.lastModified || "—")}</dd>
-        <dt>Popularity</dt><dd>#${f.popularity}</dd>`}
+        <dt>Popularity</dt><dd>#${esc(f.popularity)}</dd>`}
         ${f.license ? `<dt>License</dt><dd>${esc(f.license)}</dd>` : ""}
         <dt>Scripts</dt><dd>${esc(f.subsets.filter((s) => s !== "menu").join(", "))}</dd>
       </dl>

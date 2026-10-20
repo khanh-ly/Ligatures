@@ -75,7 +75,10 @@ final class FontServer {
         let query: [String: String]
         let headers: [String: String]  // lower-cased names
         let body: Data
+        var malformed = false          // e.g. a negative or oversized Content-Length: answered with 400
     }
+
+    private let maxBody = 1_000_000
 
     private func accept(_ conn: NWConnection) {
         conn.start(queue: queue)
@@ -109,8 +112,11 @@ final class FontServer {
             guard let colon = line.firstIndex(of: ":") else { continue }
             headers[line[..<colon].lowercased()] = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
         }
-        let length = Int(headers["content-length"] ?? "0") ?? 0
         let bodyStart = headerEnd.upperBound
+        // Never trust Content-Length: a negative or huge value must not reach the range below (it would crash).
+        guard let length = Int(headers["content-length"] ?? "0"), (0...maxBody).contains(length) else {
+            return Request(method: String(parts[0]), path: "/", query: [:], headers: headers, body: Data(), malformed: true)
+        }
         guard data.count - bodyStart >= length else { return nil }
         let target = URLComponents(string: String(parts[1]))
         var query: [String: String] = [:]
@@ -122,7 +128,10 @@ final class FontServer {
     private func send(_ conn: NWConnection, status: Int, type: String, body: Data) {
         let reason = [200: "OK", 400: "Bad Request", 403: "Forbidden", 404: "Not Found", 500: "Internal Server Error"][status] ?? "OK"
         var head = "HTTP/1.1 \(status) \(reason)\r\nContent-Type: \(type)\r\nContent-Length: \(body.count)\r\n"
-        head += "Cache-Control: no-store\r\nConnection: close\r\n\r\n"
+        head += "Cache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\n"
+        // Forbid other sites from framing the app (clickjacking).
+        head += "X-Frame-Options: DENY\r\nContent-Security-Policy: frame-ancestors 'none'\r\n"
+        head += "Connection: close\r\n\r\n"
         conn.send(content: Data(head.utf8) + body, completion: .contentProcessed { _ in conn.cancel() })
     }
 
@@ -131,7 +140,17 @@ final class FontServer {
         send(conn, status: status, type: "application/json", body: body)
     }
 
+    /// Compares without returning early, so response timing doesn't reveal how much of the token matched.
+    private func tokenMatches(_ candidate: String?) -> Bool {
+        let a = Array((candidate ?? "").utf8), b = Array(token.utf8)
+        guard a.count == b.count else { return false }
+        return zip(a, b).reduce(UInt8(0)) { $0 | ($1.0 ^ $1.1) } == 0
+    }
+
     private func respond(_ conn: NWConnection, to req: Request) {
+        if req.malformed {
+            return send(conn, status: 400, type: "text/plain", body: Data("Bad Request".utf8))
+        }
         // Reject other Host names (blocks DNS-rebinding pages pretending to be localhost).
         guard ["127.0.0.1:\(port)", "localhost:\(port)"].contains(req.headers["host"] ?? "") else {
             return send(conn, status: 403, type: "text/plain", body: Data("Forbidden".utf8))
@@ -156,7 +175,7 @@ final class FontServer {
                 }
                 return
             }
-            guard req.method == "POST", req.headers["x-fm-token"] == token else {
+            guard req.method == "POST", tokenMatches(req.headers["x-fm-token"]) else {
                 return send(conn, status: 403, type: "text/plain", body: Data("Forbidden".utf8))
             }
             startup.wait()
@@ -315,7 +334,10 @@ final class FontServer {
     /// family appears once. Popularity ranks are scaled to Google's range so mixed sorting interleaves.
     private func fontshareFamilies(_ data: [String: Any], taken: Set<String>) -> [[String: Any]] {
         let fonts = (data["fonts"] as? [[String: Any]] ?? []).filter {
-            guard let name = $0["name"] as? String, $0["slug"] is String else { return false }
+            // Slugs end up in URLs and CSS, so accept only lower-case letters, digits and hyphens.
+            guard let name = $0["name"] as? String, let slug = $0["slug"] as? String,
+                  !slug.isEmpty, slug.unicodeScalars.allSatisfy({ CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789-").contains($0) })
+            else { return false }
             return !taken.contains(name)
         }
         let scale = Double(max(taken.count, 1)) / Double(max(fonts.count, 1))
