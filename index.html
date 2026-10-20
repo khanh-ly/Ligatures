@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Font Manager</title>
+<title>Ligatures</title>
 <style>
 :root {
   --bg: #f7f6f3; --panel: #ffffff; --ink: #1c1b19; --muted: #66635d; --line: #e4e1db; --control-line: #8c8880;
@@ -28,11 +28,22 @@ header { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, v
 .brand span { color: var(--muted); font-weight: 400; }
 .field { background: var(--panel); border: 1px solid var(--control-line); border-radius: 10px; padding: 8px 12px; outline: none; }
 .field:focus { border-color: var(--accent); }
-#search { flex: 1 1 220px; min-width: 160px; }
-#preview { flex: 2 1 260px; min-width: 160px; }
+#preview { flex: 1 1 260px; min-width: 160px; }
+/* search: a magnifying-glass button that expands into a field */
+.search-wrap { display: flex; align-items: center; background: var(--panel); border: 1px solid var(--control-line); border-radius: 10px; }
+.search-wrap:focus-within { border-color: var(--accent); }
+.search-wrap button { border: 0; background: none; color: var(--muted); cursor: pointer; padding: 8px 9px; display: flex; border-radius: 9px; }
+.search-wrap button:hover, .search-wrap.open button { color: var(--ink); }
+.search-wrap button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#search { width: 0; padding: 8px 0; border: 0; background: none; outline: none; opacity: 0; visibility: hidden;
+  transition: width .22s ease, padding .22s ease, opacity .15s ease, visibility 0s linear .22s; }
+.search-wrap.open #search { width: 240px; padding: 8px 12px 8px 0; opacity: 1; visibility: visible;
+  transition: width .22s ease, padding .22s ease, opacity .15s ease .05s, visibility 0s; }
+@media (max-width: 600px) { .search-wrap.open { flex: 1 1 100%; } .search-wrap.open #search { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { #search, .search-wrap.open #search { transition: none; } }
 .size { display: flex; align-items: center; gap: 8px; color: var(--muted); }
 .size input { width: 110px; accent-color: var(--accent); }
-.row2 { max-width: 1400px; margin: 0 auto; padding: 0 20px 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.row2 { max-width: 1400px; margin: 0 auto; padding: 6px 20px 20px; display: flex; flex-wrap: wrap; gap: 12px 6px; align-items: center; }
 .chip { border: 1px solid transparent; background: var(--chip); border-radius: 999px; padding: 5px 12px; cursor: pointer; white-space: nowrap; }
 .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
 .spacer { flex: 1; }
@@ -120,6 +131,16 @@ h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: v
 #grid.list .card-top .btn { grid-column: 3; grid-row: 1; }
 #grid.list .sample { grid-column: 1 / -1; grid-row: 2; display: block; white-space: nowrap; text-overflow: ellipsis; }
 
+/* layout switch: old layout fades out, then visible cards build up one after another */
+#grid { transition: opacity .12s ease-out; }
+#grid.fading { opacity: 0; }
+@keyframes build-in { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: none; } }
+#grid .card.build-in { animation: build-in .38s cubic-bezier(.2, .7, .2, 1) both; animation-delay: calc(var(--i, 0) * 40ms); }
+@media (prefers-reduced-motion: reduce) {
+  #grid { transition: none; }
+  #grid .card.build-in { animation: none; }
+}
+
 @media (max-width: 600px) {
   .bar, .row2, main { padding-left: 16px; padding-right: 16px; }
   #grid { grid-template-columns: 1fr; }
@@ -129,9 +150,14 @@ h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: v
 <body>
 <header>
   <div class="bar">
-    <div class="brand">Font Manager <span>· Google Fonts</span></div>
-    <input id="search" class="field" type="search" placeholder="Search families or designers  ( / )" autocomplete="off">
-    <input id="preview" class="field" type="text" placeholder="Type to preview…" value="">
+    <div class="brand">Ligatures</div>
+    <input id="preview" class="field" type="text" placeholder="Type to preview…" value="" aria-label="Preview text">
+    <div class="search-wrap" id="searchWrap">
+      <button id="searchBtn" type="button" aria-label="Search fonts" aria-expanded="false" aria-controls="search" title="Search ( / )">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="m11 11 3.5 3.5"/></svg>
+      </button>
+      <input id="search" type="search" placeholder="Search families or designers" autocomplete="off" aria-label="Search families or designers">
+    </div>
     <label class="size"><input id="size" type="range" min="14" max="96" value="36"><span id="sizeVal">36px</span></label>
   </div>
   <div class="row2">
@@ -446,10 +472,33 @@ document.addEventListener("click", (e) => {
 $("#scrim").addEventListener("click", closeDrawer);
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeDrawer();
-  if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); $("#search").focus(); }
+  if (e.key === "/" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); openSearch(); }
 });
 
 let searchTimer;
+function openSearch() {
+  $("#searchWrap").classList.add("open");
+  $("#searchBtn").setAttribute("aria-expanded", "true");
+  $("#search").focus();
+}
+function closeSearch() {
+  $("#searchWrap").classList.remove("open");
+  $("#searchBtn").setAttribute("aria-expanded", "false");
+}
+$("#searchBtn").addEventListener("click", () => {
+  if (!$("#searchWrap").classList.contains("open")) return openSearch();
+  if ($("#search").value) return $("#search").focus();  // keep a live query visible
+  closeSearch();
+});
+$("#search").addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || drawerFamily) return;
+  e.target.value = ""; S.q = ""; render();
+  closeSearch(); $("#searchBtn").focus();
+});
+// Collapse when focus leaves an empty field (but not when moving to the toggle button itself).
+$("#searchWrap").addEventListener("focusout", (e) => {
+  if (!$("#search").value && !$("#searchWrap").contains(e.relatedTarget)) closeSearch();
+});
 $("#search").addEventListener("input", (e) => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { S.q = e.target.value; render(); }, 120); });
 $("#preview").addEventListener("input", (e) => {
   S.text = e.target.value; savePrefs();
@@ -465,10 +514,33 @@ function applyLayout() {
   $("#grid").classList.toggle("list", S.layout === "list");
   document.querySelectorAll("#layout button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.layout === S.layout)));
 }
+let layoutSwitch = 0;  // ignores stale steps when the switch is clicked again mid-transition
+function switchLayout() {
+  const grid = $("#grid");
+  const id = ++layoutSwitch;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return applyLayout();
+  grid.classList.add("fading");
+  setTimeout(() => {
+    if (id !== layoutSwitch) return;
+    applyLayout();
+    // Only cards in view take part; the rest are already in place when scrolled to.
+    const cards = [...grid.children].filter((c) => {
+      const r = c.getBoundingClientRect();
+      return r.bottom > 0 && r.top < innerHeight;
+    }).slice(0, 24);
+    cards.forEach((c, i) => { c.classList.remove("build-in"); c.style.setProperty("--i", i); });
+    void grid.offsetWidth;  // restart the animation if it was already running
+    cards.forEach((c) => c.classList.add("build-in"));
+    grid.classList.remove("fading");
+    setTimeout(() => {
+      if (id === layoutSwitch) cards.forEach((c) => { c.classList.remove("build-in"); c.style.removeProperty("--i"); });
+    }, 380 + cards.length * 40 + 50);
+  }, 120);
+}
 $("#layout").addEventListener("click", (e) => {
   const b = e.target.closest("[data-layout]");
   if (!b || b.dataset.layout === S.layout) return;
-  S.layout = b.dataset.layout; savePrefs(); applyLayout();
+  S.layout = b.dataset.layout; savePrefs(); switchLayout();
 });
 $("#subset").addEventListener("change", (e) => { S.subset = e.target.value; savePrefs(); render(); });
 
@@ -480,7 +552,7 @@ function renderBanner() {
   try { dismissed = sessionStorage.getItem("fm-new-dismissed") === String(S.lastCheck && S.lastCheck.at); } catch (e) {}
   if (!found.length || dismissed) { b.hidden = true; return; }
   const names = found.slice(0, 4).map(esc).join(", ") + (found.length > 4 ? ` and ${found.length - 4} more` : "");
-  b.innerHTML = `<div class="inner"><span class="msg"><b>${found.length} new font${found.length === 1 ? "" : "s"}</b> on Google Fonts since you last opened Font Manager: ${names}</span>
+  b.innerHTML = `<div class="inner"><span class="msg"><b>${found.length} new font${found.length === 1 ? "" : "s"}</b> on Google Fonts since you last opened Ligatures: ${names}</span>
     <button class="btn primary" data-act="show-new">Show</button><button class="btn" data-act="dismiss-new">Dismiss</button></div>`;
   b.hidden = false;
 }

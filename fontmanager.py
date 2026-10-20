@@ -173,7 +173,7 @@ def move_to_trash(paths):
         return "Trash"
     if SYSTEM == "Darwin":
         # macOS blocks direct writes to ~/.Trash, so ask Finder to do it (the first time,
-        # macOS asks once for permission to let Font Manager control Finder).
+        # macOS asks once for permission to let Ligatures control Finder).
         items = ", ".join('POSIX file "%s"' % str(p).replace("\\", "\\\\").replace('"', '\\"') for p in paths)
         result = subprocess.run(["osascript", "-e", 'tell application "Finder" to delete {%s}' % items],
                                 capture_output=True, text=True)
@@ -191,7 +191,7 @@ def uninstall_family(family):
         state = load_state()
         info = state["installed"].get(family)
         if info is None:
-            raise RuntimeError("%s was not installed by Font Manager" % family)
+            raise RuntimeError("%s was not installed by Ligatures" % family)
         paths = [Path(p) for p in info["files"]]
         paths = [p for p in paths if p.exists() and p.parent == FONT_DIR]
         where = move_to_trash(paths)
@@ -325,10 +325,18 @@ def main():
     sys.stdout.reconfigure(line_buffering=True)  # show messages promptly when not in a terminal
     url = "http://%s:%d/" % (HOST, PORT)
     server = ThreadingHTTPServer((HOST, PORT), Handler)
-    print("Font Manager running at %s" % url)
+    print("Ligatures running at %s" % url)
     print("Fonts install to %s  (Ctrl+C to quit)" % FONT_DIR)
     print("Checking Google Fonts for new families…")
     check_for_new_fonts()  # requests queue on the open socket until this finishes
+    if "--exit-with-parent" in sys.argv:  # used by the Mac app: never outlive it, even after a crash
+        parent = os.getppid()
+
+        def watch_parent():
+            while os.getppid() == parent:
+                time.sleep(2)
+            os._exit(0)
+        threading.Thread(target=watch_parent, daemon=True).start()
     if "--no-browser" not in sys.argv:
         threading.Timer(0.5, lambda: webbrowser.open(url)).start()
     try:
