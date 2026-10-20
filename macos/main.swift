@@ -147,6 +147,73 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 
     @objc func reloadPage(_ sender: Any?) { webView.reload() }
 
+    // MARK: - About
+
+    static let projectURL = URL(string: "https://github.com/khanh-ly/Ligatures")!
+
+    var aboutWindow: NSWindow?
+
+    /// A custom About window (the standard panel can't hold a button): icon, name, version,
+    /// description, a button to the GitHub project, and the copyright line.
+    @objc func showAbout(_ sender: Any?) {
+        if aboutWindow == nil { aboutWindow = makeAboutWindow() }
+        aboutWindow?.center()
+        aboutWindow?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func makeAboutWindow() -> NSWindow {
+        let info = Bundle.main.infoDictionary ?? [:]
+        func label(_ text: String, size: CGFloat, weight: NSFont.Weight = .regular, color: NSColor = .labelColor) -> NSTextField {
+            let field = NSTextField(wrappingLabelWithString: text)
+            field.font = .systemFont(ofSize: size, weight: weight)
+            field.textColor = color
+            field.alignment = .center
+            field.isSelectable = false
+            field.preferredMaxLayoutWidth = 240
+            return field
+        }
+
+        let icon = NSImageView(image: NSApp.applicationIconImage)
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([icon.widthAnchor.constraint(equalToConstant: 96), icon.heightAnchor.constraint(equalToConstant: 96)])
+
+        let button = NSButton(title: "Ligatures on Github", target: self, action: #selector(openProjectPage(_:)))
+        button.bezelStyle = .rounded
+        button.toolTip = AppDelegate.projectURL.absoluteString
+
+        let stack = NSStackView(views: [
+            icon,
+            label("Ligatures", size: 18, weight: .bold),
+            label("Version \(info["CFBundleShortVersionString"] as? String ?? "1.0")", size: 11, color: .secondaryLabelColor),
+            label("The free fonts manager.", size: 12, weight: .semibold),
+            label("Browse and install Google Fonts and Fontshare families on your Mac.", size: 11, color: .secondaryLabelColor),
+            button,
+            label(info["NSHumanReadableCopyright"] as? String ?? "", size: 10, color: .tertiaryLabelColor),
+        ])
+        stack.orientation = .vertical
+        stack.alignment = .centerX
+        stack.spacing = 6
+        stack.setCustomSpacing(12, after: icon)
+        stack.setCustomSpacing(12, after: stack.views[2])  // version → tagline
+        stack.setCustomSpacing(16, after: stack.views[4])  // description → button
+        stack.setCustomSpacing(14, after: button)
+        stack.edgeInsets = NSEdgeInsets(top: 36, left: 24, bottom: 20, right: 24)  // top clears the transparent title bar
+        stack.translatesAutoresizingMaskIntoConstraints = false
+
+        let window = NSWindow(contentRect: .zero, styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
+        window.isMovableByWindowBackground = true
+        window.isReleasedWhenClosed = false
+        window.contentView = stack
+        NSLayoutConstraint.activate([stack.widthAnchor.constraint(equalToConstant: 288)])
+        window.setContentSize(stack.fittingSize)
+        return window
+    }
+
+    @objc func openProjectPage(_ sender: Any?) { NSWorkspace.shared.open(AppDelegate.projectURL) }
+
     // MARK: - Menu
 
     func buildMenu() {
@@ -154,7 +221,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "About Ligatures", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: "About Ligatures", action: #selector(showAbout(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Hide Ligatures", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         let hideOthers = appMenu.addItem(withTitle: "Hide Others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
@@ -191,6 +258,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
         windowItem.submenu = windowMenu
         main.addItem(windowItem)
         NSApp.windowsMenu = windowMenu
+
+        let helpItem = NSMenuItem()
+        let help = NSMenu(title: "Help")
+        help.addItem(withTitle: "Ligatures on GitHub", action: #selector(openProjectPage(_:)), keyEquivalent: "")
+        helpItem.submenu = help
+        main.addItem(helpItem)
+        NSApp.helpMenu = help
 
         NSApp.mainMenu = main
     }
