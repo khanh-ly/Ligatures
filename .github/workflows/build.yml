@@ -1,0 +1,57 @@
+# Builds Ligatures.zip on macOS for every push to main, every pull request, and on demand.
+# Pushing a version tag (e.g. v1.1.0) also attaches the zip to that version's GitHub release.
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the app and zip
+        run: ./build_app.sh
+
+      - name: Check the build
+        run: |
+          codesign --verify --deep --strict build/Ligatures.app
+          lipo -archs build/Ligatures.app/Contents/MacOS/Ligatures | grep -q "x86_64 arm64"
+          cd build && shasum -a 256 Ligatures.zip | tee Ligatures.zip.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Ligatures
+          path: |
+            build/Ligatures.zip
+            build/Ligatures.zip.sha256
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # to create the release and upload the zip
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Ligatures
+
+      - name: Attach the zip to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 \
+            || gh release create "$TAG" --title "Ligatures ${TAG#v}" --generate-notes
+          gh release upload "$TAG" Ligatures.zip Ligatures.zip.sha256 --clobber
