@@ -4,6 +4,11 @@
 
 > Not affiliated with or endorsed by Google or Indian Type Foundry. "Google Fonts" is a trademark of Google LLC; Fontshare is a service of Indian Type Foundry.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshot-dark.png">
+  <img alt="Ligatures showing a grid of Google Fonts families, each previewing the sentence 'Sphinx of black quartz, judge my vow'" src="docs/screenshot-light.png">
+</picture>
+
 ## Download
 
 **[Download Ligatures for Mac](https://github.com/khanh-ly/Ligatures/releases/latest/download/Ligatures.zip)** (macOS 12 or later, Apple silicon or Intel), or see all [releases](https://github.com/khanh-ly/Ligatures/releases).
@@ -107,6 +112,7 @@ macos/main.swift         native app window
 macos/FontServer.swift   the app's built-in server (Swift port of fontmanager.py)
 macos/Info.plist         app bundle settings
 macos/make_icon.swift    draws the app icon (a monoline "fi" ligature)
+docs/                    README screenshots (light and dark)
 ```
 
 ## Licenses
