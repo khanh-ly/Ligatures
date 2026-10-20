@@ -9,7 +9,7 @@
 	<key>CFBundleIdentifier</key>
 	<string>ly.khanh.fontmanager</string>
 	<key>CFBundleExecutable</key>
-	<string>FontManager</string>
+	<string>Ligatures</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundlePackageType</key>
@@ -26,8 +26,6 @@
 	<true/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
-	<key>NSAppleEventsUsageDescription</key>
-	<string>Ligatures asks Finder to move uninstalled fonts to the Trash.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

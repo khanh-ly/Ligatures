@@ -24,8 +24,9 @@ button, input, select { font: inherit; color: inherit; }
 header { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
 .bar { max-width: 1400px; margin: 0 auto; padding: 14px 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.brand { font-weight: 700; font-size: 16px; margin-right: 8px; letter-spacing: -.01em; }
-.brand span { color: var(--muted); font-weight: 400; }
+.brand { display: flex; flex-direction: column; margin: 0 8px 0 0; font-size: inherit; line-height: 1.2; }
+.brand-name { font-weight: 700; font-size: 18px; letter-spacing: -.01em; }
+.brand-sub { font-size: 12px; color: var(--muted); }
 .field { background: var(--panel); border: 1px solid var(--control-line); border-radius: 10px; padding: 8px 12px; outline: none; }
 .field:focus { border-color: var(--accent); }
 #preview { flex: 1 1 260px; min-width: 160px; }
@@ -41,8 +42,29 @@ header { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, v
   transition: width .22s ease, padding .22s ease, opacity .15s ease .05s, visibility 0s; }
 @media (max-width: 600px) { .search-wrap.open { flex: 1 1 100%; } .search-wrap.open #search { width: 100%; } }
 @media (prefers-reduced-motion: reduce) { #search, .search-wrap.open #search { transition: none; } }
-.size { display: flex; align-items: center; gap: 8px; color: var(--muted); }
-.size input { width: 110px; accent-color: var(--accent); }
+.size { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+#sizeVal { min-width: 4ch; font-variant-numeric: tabular-nums; }
+/* preview-size slider: thin track filled up to the handle (--fill is set from JS), themed via tokens */
+#size { -webkit-appearance: none; appearance: none; width: 120px; height: 20px; margin: 0; background: none; cursor: pointer; }
+#size:focus { outline: none; }
+#size::-webkit-slider-runnable-track { height: 4px; border-radius: 999px;
+  background: linear-gradient(to right, var(--accent) var(--fill, 27%), var(--control-line) var(--fill, 27%)); }
+#size::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 14px; height: 14px; margin-top: -5px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--accent), 0 1px 3px rgba(0,0,0,.25);
+  transition: transform .15s ease, box-shadow .15s ease; }
+#size:hover::-webkit-slider-thumb { transform: scale(1.2); box-shadow: 0 0 0 1px var(--accent), 0 0 0 6px color-mix(in srgb, var(--accent) 22%, transparent); }
+#size:active::-webkit-slider-thumb { transform: scale(1.25); box-shadow: 0 0 0 1px var(--accent), 0 0 0 8px color-mix(in srgb, var(--accent) 30%, transparent); }
+#size:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--bg), 0 0 0 6px var(--accent); }
+#size::-moz-range-track { height: 4px; border-radius: 999px; background: var(--control-line); }
+#size::-moz-range-progress { height: 4px; border-radius: 999px; background: var(--accent); }
+#size::-moz-range-thumb { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); border: 2px solid var(--panel);
+  box-shadow: 0 0 0 1px var(--accent), 0 1px 3px rgba(0,0,0,.25); transition: transform .15s ease, box-shadow .15s ease; }
+#size:hover::-moz-range-thumb { transform: scale(1.2); box-shadow: 0 0 0 1px var(--accent), 0 0 0 6px color-mix(in srgb, var(--accent) 22%, transparent); }
+#size:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 1px var(--accent), 0 0 0 4px var(--bg), 0 0 0 6px var(--accent); }
+@media (prefers-reduced-motion: reduce) {
+  #size::-webkit-slider-thumb { transition: none; }  /* kept separate: one unknown pseudo-element voids a whole rule */
+  #size::-moz-range-thumb { transition: none; }
+}
 .row2 { max-width: 1400px; margin: 0 auto; padding: 6px 20px 20px; display: flex; flex-wrap: wrap; gap: 12px 6px; align-items: center; }
 .chip { border: 1px solid transparent; background: var(--chip); border-radius: 999px; padding: 5px 12px; cursor: pointer; white-space: nowrap; }
 .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
@@ -150,7 +172,7 @@ h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: v
 <body>
 <header>
   <div class="bar">
-    <div class="brand">Ligatures</div>
+    <h1 class="brand"><span class="brand-name">Ligatures</span><span class="brand-sub">The free fonts manager</span></h1>
     <input id="preview" class="field" type="text" placeholder="Type to preview…" value="" aria-label="Preview text">
     <div class="search-wrap" id="searchWrap">
       <button id="searchBtn" type="button" aria-label="Search fonts" aria-expanded="false" aria-controls="search" title="Search ( / )">
@@ -158,14 +180,15 @@ h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: v
       </button>
       <input id="search" type="search" placeholder="Search families or designers" autocomplete="off" aria-label="Search families or designers">
     </div>
-    <label class="size"><input id="size" type="range" min="14" max="96" value="36"><span id="sizeVal">36px</span></label>
+    <label class="size"><input id="size" type="range" min="14" max="96" value="36" aria-label="Preview size"><span id="sizeVal">36px</span></label>
   </div>
   <div class="row2">
     <div id="views"></div>
     <span style="width:10px"></span>
     <div id="cats"></div>
     <div class="spacer"></div>
-    <select id="subset" class="field" title="Language / script"></select>
+    <select id="source" class="field" title="Library" aria-label="Font library"></select>
+    <select id="subset" class="field" title="Language / script" aria-label="Language or script"></select>
     <div class="seg" id="layout" role="group" aria-label="Layout">
       <button data-layout="grid" title="Grid view" aria-label="Grid view"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></button>
       <button data-layout="list" title="List view" aria-label="List view"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="2" width="14" height="2.5" rx="1"/><rect x="1" y="6.75" width="14" height="2.5" rx="1"/><rect x="1" y="11.5" width="14" height="2.5" rx="1"/></svg></button>
@@ -198,11 +221,12 @@ const DEFAULT_TEXT = "The quick brown fox jumps over the lazy dog";
 const PAGE = 48;
 const CATS = ["All", "Sans Serif", "Serif", "Display", "Handwriting", "Monospace"];
 const VIEWS = ["Browse", "New", "Installed", "Favorites"];
-const WEIGHT_NAMES = {100:"Thin",200:"ExtraLight",300:"Light",400:"Regular",500:"Medium",600:"SemiBold",700:"Bold",800:"ExtraBold",900:"Black"};
+const WEIGHT_NAMES = {50:"Hairline",100:"Thin",200:"ExtraLight",300:"Light",400:"Regular",500:"Medium",350:"Book",600:"SemiBold",700:"Bold",800:"ExtraBold",900:"Black",1000:"ExtraBlack"};
+const SOURCE_NAMES = {google: "Google Fonts", fontshare: "Fontshare"};
 
 const S = {
   families: [], byName: new Map(), installed: {}, favorites: new Set(), fontDir: "",
-  view: "Browse", cat: "All", subset: "", sort: "popularity", q: "", layout: "grid",
+  view: "Browse", cat: "All", subset: "", source: "", sort: "popularity", q: "", layout: "grid",
   text: "", size: 36, list: [], shown: 0, busy: new Set(),
 };
 const loadedCss = new Set();
@@ -212,10 +236,10 @@ const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;"
 // Restore per-browser preferences
 try {
   const p = JSON.parse(localStorage.getItem("fm-prefs") || "{}");
-  Object.assign(S, {text: p.text || "", size: p.size || 36, sort: p.sort || "popularity", cat: p.cat || "All", subset: p.subset || "", layout: p.layout === "list" ? "list" : "grid"});
+  Object.assign(S, {text: p.text || "", size: p.size || 36, sort: p.sort || "popularity", cat: p.cat || "All", subset: p.subset || "", source: SOURCE_NAMES[p.source] ? p.source : "", layout: p.layout === "list" ? "list" : "grid"});
 } catch (e) {}
 function savePrefs() {
-  try { localStorage.setItem("fm-prefs", JSON.stringify({text: S.text, size: S.size, sort: S.sort, cat: S.cat, subset: S.subset, layout: S.layout})); } catch (e) {}
+  try { localStorage.setItem("fm-prefs", JSON.stringify({text: S.text, size: S.size, sort: S.sort, cat: S.cat, subset: S.subset, source: S.source, layout: S.layout})); } catch (e) {}
 }
 
 // ---------- API ----------
@@ -253,6 +277,26 @@ function loadCss(url) {
   });
 }
 function previewVariant(f) { return f.variants.includes("400") ? "400" : f.variants[0]; }
+// The CSS family a preview renders with. Fontshare fonts get their own name, so they never
+// clash with an installed font or a Google family of the same name.
+function previewFamily(f) { return f.source === "fontshare" ? `FS ${f.slug}` : f.family; }
+const loadedFaces = new Set();
+function loadPreview(f, variants) {
+  if (f.source !== "fontshare") return loadCss(cssUrl(f.family, variants));
+  const fam = previewFamily(f), rules = [];
+  for (const v of variants) {
+    const face = f.faces[v];
+    if (!face || loadedFaces.has(fam + v) || !/^https:\/\/cdn\.fontshare\.com\/[\w\/.-]+$/.test(face.url)) continue;
+    loadedFaces.add(fam + v);
+    rules.push(`@font-face { font-family: "${fam}"; src: url("${face.url}") format("woff2"); font-weight: ${parseInt(v) || 400}; font-style: ${v.endsWith("i") ? "italic" : "normal"}; font-display: swap; }`);
+  }
+  if (rules.length) {
+    const style = document.createElement("style");
+    style.textContent = rules.join("\n");
+    document.head.appendChild(style);
+  }
+  return Promise.all(variants.map((v) => document.fonts.load(`${v.endsWith("i") ? "italic " : ""}${parseInt(v) || 400} 16px "${fam}"`).catch(() => {})));
+}
 function variantStyle(v) { return `font-weight:${parseInt(v) || 400};font-style:${v.endsWith("i") ? "italic" : "normal"}`; }
 function variantLabel(v) { const w = parseInt(v) || 400; return `${WEIGHT_NAMES[w] || w} ${w}${v.endsWith("i") ? " Italic" : ""}`; }
 
@@ -265,6 +309,7 @@ function computeList() {
     if (S.view === "New" && !S.newFamilies[f.family]) return false;
     if (S.cat !== "All" && f.category !== S.cat) return false;
     if (S.subset && !f.subsets.includes(S.subset)) return false;
+    if (S.source && (f.source || "google") !== S.source) return false;
     if (q && !f.family.toLowerCase().includes(q) && !(f.designers || []).some((d) => d.toLowerCase().includes(q))) return false;
     return true;
   });
@@ -288,7 +333,7 @@ const io = new IntersectionObserver((entries) => {
     io.unobserve(e.target);
     const f = S.byName.get(e.target.dataset.family);
     const el = e.target.querySelector(".sample");
-    loadCss(cssUrl(f.family, [previewVariant(f)])).then(() => el.classList.remove("loading"));
+    loadPreview(f, [previewVariant(f)]).then(() => el.classList.remove("loading"));
   }
 }, {rootMargin: "300px"});
 
@@ -308,12 +353,12 @@ function cardHtml(f) {
     <div class="card-top">
       <div class="grow">
         <div class="card-name">${fam}</div>
-        <div class="card-meta">${esc(f.category)} · ${f.variants.length} style${f.variants.length > 1 ? "s" : ""}${f.axes.length ? ' · <span class="badge">Variable</span>' : ""}${S.newFamilies[f.family] ? ' · <span class="badge new">New</span>' : ""}${inst ? ' · <span style="color:var(--ok);white-space:nowrap">✓ Installed</span>' : ""}</div>
+        <div class="card-meta">${esc(f.category)} · ${f.variants.length} style${f.variants.length > 1 ? "s" : ""}${f.axes.length ? ' · <span class="badge">Variable</span>' : ""}${f.source === "fontshare" ? ' · <span class="badge">Fontshare</span>' : ""}${S.newFamilies[f.family] ? ' · <span class="badge new">New</span>' : ""}${inst ? ' · <span style="color:var(--ok);white-space:nowrap">✓ Installed</span>' : ""}</div>
       </div>
       <button class="icon-btn ${fav ? "on" : ""}" data-act="fav" data-family="${fam}" title="Favorite">${fav ? "★" : "☆"}</button>
       ${installBtn(f)}
     </div>
-    <div class="sample loading" style="font-family:'${fam.replace(/'/g, "\\'")}',var(--fallback, sans-serif);font-size:${S.size}px;${variantStyle(v)}">${esc(S.text || DEFAULT_TEXT)}</div>
+    <div class="sample loading" style="font-family:'${esc(previewFamily(f))}',var(--fallback, sans-serif);font-size:${S.size}px;${variantStyle(v)}">${esc(S.text || DEFAULT_TEXT)}</div>
   </article>`;
 }
 
@@ -371,9 +416,14 @@ function openDrawer(family, keepScroll) {
   const d = $("#drawer");
   const scroll = keepScroll ? (d.querySelector(".d-body") || {}).scrollTop : 0;
   const fam = esc(f.family);
-  const ff = `font-family:'${fam.replace(/'/g, "\\'")}',sans-serif`;
+  const ff = `font-family:'${esc(previewFamily(f))}',sans-serif`;
   const inst = S.installed[f.family];
-  const embed = `<link rel="preconnect" href="https://fonts.googleapis.com">\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n<link href="${cssUrl(f.family, f.variants)}" rel="stylesheet">\n\nfont-family: "${f.family}", ${f.category === "Serif" ? "serif" : f.category === "Monospace" ? "monospace" : f.category === "Handwriting" ? "cursive" : "sans-serif"};`;
+  const fontshare = f.source === "fontshare";
+  const generic = f.category === "Serif" ? "serif" : f.category === "Monospace" ? "monospace" : f.category === "Handwriting" ? "cursive" : "sans-serif";
+  const embed = fontshare
+    ? `<link href="https://api.fontshare.com/v2/css?f[]=${f.slug}@${f.variants.map((v) => f.faces[v].number).join(",")}&display=swap" rel="stylesheet">\n\nfont-family: "${f.family}", ${generic};`
+    : `<link rel="preconnect" href="https://fonts.googleapis.com">\n<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n<link href="${cssUrl(f.family, f.variants)}" rel="stylesheet">\n\nfont-family: "${f.family}", ${generic};`;
+  const pageUrl = fontshare ? f.link : `https://fonts.google.com/specimen/${encodeURIComponent(f.family).replace(/%20/g, "+")}`;
   d.innerHTML = `
     <div class="d-head">
       <div style="flex:1;min-width:0">
@@ -386,7 +436,7 @@ function openDrawer(family, keepScroll) {
       <div class="d-actions">
         ${installBtn(f)}
         <button class="btn" data-act="fav" data-family="${fam}">${S.favorites.has(f.family) ? "★ Favorited" : "☆ Favorite"}</button>
-        <a class="btn" target="_blank" rel="noopener" href="https://fonts.google.com/specimen/${encodeURIComponent(f.family).replace(/%20/g, "+")}">Open on Google Fonts <span aria-hidden="true">↗</span><span class="sr-only"> (opens in a new tab)</span></a>
+        <a class="btn" target="_blank" rel="noopener" href="${esc(pageUrl)}">Open on ${SOURCE_NAMES[f.source] || "Google Fonts"} <span aria-hidden="true">↗</span><span class="sr-only"> (opens in a new tab)</span></a>
         <button class="btn" data-act="copy">Copy embed code</button>
       </div>
       ${inst ? `<div class="card-meta">Installed ${inst.files} file${inst.files === 1 ? "" : "s"} to ${esc(S.fontDir)}${inst.missing ? ` · ${inst.missing} missing` : ""}</div>` : ""}
@@ -394,12 +444,14 @@ function openDrawer(family, keepScroll) {
       ${f.variants.map((v) => `<div class="style-row"><div class="label">${variantLabel(v)}</div><div class="s" style="${ff};${variantStyle(v)}">${esc(S.text || DEFAULT_TEXT)}</div></div>`).join("")}
       <h3>About</h3>
       <dl class="info">
+        <dt>Library</dt><dd>${SOURCE_NAMES[f.source] || "Google Fonts"}</dd>
         <dt>Category</dt><dd>${esc(f.category)}</dd>
         <dt>Styles</dt><dd>${f.variants.length}</dd>
         ${f.axes.length ? `<dt>Variable axes</dt><dd>${f.axes.map((a) => `${esc(a.tag)} ${a.min}–${a.max}`).join(", ")}</dd>` : ""}
         <dt>Added</dt><dd>${esc(f.dateAdded || "—")}</dd>
-        <dt>Updated</dt><dd>${esc(f.lastModified || "—")}</dd>
-        <dt>Popularity</dt><dd>#${f.popularity}</dd>
+        ${fontshare ? "" : `<dt>Updated</dt><dd>${esc(f.lastModified || "—")}</dd>
+        <dt>Popularity</dt><dd>#${f.popularity}</dd>`}
+        ${f.license ? `<dt>License</dt><dd>${esc(f.license)}</dd>` : ""}
         <dt>Scripts</dt><dd>${esc(f.subsets.filter((s) => s !== "menu").join(", "))}</dd>
       </dl>
       <h3>Use on the web</h3>
@@ -408,7 +460,7 @@ function openDrawer(family, keepScroll) {
   d.classList.add("open"); d.setAttribute("aria-hidden", "false");
   $("#scrim").classList.add("open");
   if (scroll) d.querySelector(".d-body").scrollTop = scroll;
-  loadCss(cssUrl(f.family, f.variants));
+  loadPreview(f, f.variants);
 }
 function closeDrawer() {
   drawerFamily = null;
@@ -505,8 +557,12 @@ $("#preview").addEventListener("input", (e) => {
   const txt = S.text || DEFAULT_TEXT;
   document.querySelectorAll(".sample, .style-row .s").forEach((el) => (el.textContent = txt));
 });
+function updateSizeFill() {
+  const el = $("#size");
+  el.style.setProperty("--fill", ((el.value - el.min) / (el.max - el.min)) * 100 + "%");
+}
 $("#size").addEventListener("input", (e) => {
-  S.size = +e.target.value; $("#sizeVal").textContent = S.size + "px"; savePrefs();
+  S.size = +e.target.value; $("#sizeVal").textContent = S.size + "px"; savePrefs(); updateSizeFill();
   document.querySelectorAll(".sample").forEach((el) => (el.style.fontSize = S.size + "px"));
 });
 $("#sort").addEventListener("change", (e) => { S.sort = e.target.value; savePrefs(); render(); });
@@ -543,6 +599,7 @@ $("#layout").addEventListener("click", (e) => {
   S.layout = b.dataset.layout; savePrefs(); switchLayout();
 });
 $("#subset").addEventListener("change", (e) => { S.subset = e.target.value; savePrefs(); render(); });
+$("#source").addEventListener("change", (e) => { S.source = e.target.value; savePrefs(); render(); });
 
 // ---------- new fonts since last launch ----------
 function renderBanner() {
@@ -552,7 +609,7 @@ function renderBanner() {
   try { dismissed = sessionStorage.getItem("fm-new-dismissed") === String(S.lastCheck && S.lastCheck.at); } catch (e) {}
   if (!found.length || dismissed) { b.hidden = true; return; }
   const names = found.slice(0, 4).map(esc).join(", ") + (found.length > 4 ? ` and ${found.length - 4} more` : "");
-  b.innerHTML = `<div class="inner"><span class="msg"><b>${found.length} new font${found.length === 1 ? "" : "s"}</b> on Google Fonts since you last opened Ligatures: ${names}</span>
+  b.innerHTML = `<div class="inner"><span class="msg"><b>${found.length} new font${found.length === 1 ? "" : "s"}</b> since you last opened Ligatures: ${names}</span>
     <button class="btn primary" data-act="show-new">Show</button><button class="btn" data-act="dismiss-new">Dismiss</button></div>`;
   b.hidden = false;
 }
@@ -576,8 +633,8 @@ function renderChecked() {
 
 // ---------- boot ----------
 (async function boot() {
-  $("#preview").value = S.text; $("#size").value = S.size; $("#sizeVal").textContent = S.size + "px"; $("#sort").value = S.sort; applyLayout();
-  $("#empty").hidden = false; $("#empty").textContent = "Loading the Google Fonts catalog…";
+  $("#preview").value = S.text; $("#size").value = S.size; updateSizeFill(); $("#sizeVal").textContent = S.size + "px"; $("#sort").value = S.sort; applyLayout();
+  $("#empty").hidden = false; $("#empty").textContent = "Loading the font catalogs…";
   try {
     const [cat] = await Promise.all([api("/api/catalog"), refreshState()]);
     S.families = cat.families;
@@ -593,6 +650,12 @@ function renderChecked() {
     subs.map((s) => `<option value="${esc(s)}">${esc(s.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()))} (${counts[s]})</option>`).join("");
   if (!counts[S.subset]) S.subset = "";
   $("#subset").value = S.subset;
+  const bySource = {};
+  S.families.forEach((f) => { bySource[f.source || "google"] = (bySource[f.source || "google"] || 0) + 1; });
+  $("#source").innerHTML = `<option value="">All libraries (${S.families.length.toLocaleString()})</option>` +
+    Object.keys(SOURCE_NAMES).filter((k) => bySource[k]).map((k) => `<option value="${k}">${SOURCE_NAMES[k]} (${bySource[k].toLocaleString()})</option>`).join("");
+  if (!bySource[S.source]) S.source = "";
+  $("#source").value = S.source;
   renderChips();
   render();
   renderBanner();

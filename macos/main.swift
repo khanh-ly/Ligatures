@@ -1,6 +1,6 @@
-// Ligatures.app: a native window around the local font manager.
-// Starts fontmanager.py (bundled in Resources) on a private port, shows it in a
-// WKWebView, and stops the server when the app quits.
+// Ligatures.app: a native window around the font manager.
+// Runs the built-in FontServer (a Swift port of fontmanager.py) on a private port and
+// shows it in a WKWebView. Needs nothing else installed: no Python, no developer tools.
 
 import Cocoa
 import WebKit
@@ -10,9 +10,8 @@ let port = 8766  // fixed so the web view's saved preferences survive relaunches
 final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate {
     var window: NSWindow!
     var webView: WKWebView!
-    var server: Process?
+    var server: FontServer?
     var status: NSTextField!
-    var quitting = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         buildMenu()
@@ -23,62 +22,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func applicationWillTerminate(_ notification: Notification) {
-        quitting = true
-        if let server, server.isRunning {
-            server.interrupt()  // SIGINT: lets Python finish cleanly
-            server.waitUntilExit()
-        }
+        server?.stop()
     }
 
     // MARK: - Server
 
     func startServer() {
-        guard let resources = Bundle.main.resourceURL else { return }
-        let script = resources.appendingPathComponent("fontmanager.py").path
-
         if portIsOpen() {
-            // Something already listens on our port (e.g. a second copy of the app): just use it.
+            // Another copy of the app is already serving on our port: just use it.
             loadPage()
             return
         }
-
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
-        p.arguments = [script, "--no-browser", "--exit-with-parent"]
-        p.currentDirectoryURL = resources
-        var env = ProcessInfo.processInfo.environment
-        env["FONTMANAGER_PORT"] = String(port)
-        env["PYTHONDONTWRITEBYTECODE"] = "1"  // don't write into the signed app bundle
-        p.environment = env
-
-        let logs = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs")
-        try? FileManager.default.createDirectory(at: logs, withIntermediateDirectories: true)
-        let logURL = logs.appendingPathComponent("FontManager.log")
-        FileManager.default.createFile(atPath: logURL.path, contents: nil)
-        if let log = try? FileHandle(forWritingTo: logURL) {
-            p.standardOutput = log
-            p.standardError = log
+        guard let url = Bundle.main.url(forResource: "index", withExtension: "html"),
+              let html = try? String(contentsOf: url, encoding: .utf8) else {
+            showError("The app is missing its index.html. Try reinstalling Ligatures.")
+            return
         }
-        p.terminationHandler = { [weak self] proc in
+        let server = FontServer(port: UInt16(port), indexHTML: html)
+        server.onReady = { [weak self] in DispatchQueue.main.async { self?.loadPage() } }
+        server.onFailed = { [weak self] error in
             DispatchQueue.main.async {
-                guard let self, !self.quitting else { return }
-                self.showError("The font server stopped unexpectedly (exit code \(proc.terminationStatus)).\nDetails are in ~/Library/Logs/FontManager.log")
+                guard let self else { return }
+                if self.portIsOpen() { self.loadPage(); return }
+                self.showError("Couldn't start the font server: \(error.localizedDescription)\nDetails are in ~/Library/Logs/FontManager.log")
             }
         }
         do {
-            try p.run()
-            server = p
+            try server.start()
+            self.server = server
         } catch {
-            showError("Couldn't start Python: \(error.localizedDescription)\nLigatures needs /usr/bin/python3 (Xcode Command Line Tools).")
-            return
+            showError("Couldn't start the font server: \(error.localizedDescription)")
         }
-        waitForServer(attempt: 0)
-    }
-
-    func waitForServer(attempt: Int) {
-        if portIsOpen() { loadPage(); return }
-        if attempt > 150 { showError("The font server didn't start in time.\nDetails are in ~/Library/Logs/FontManager.log"); return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { self.waitForServer(attempt: attempt + 1) }
     }
 
     func portIsOpen() -> Bool {
