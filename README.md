@@ -105,7 +105,9 @@ macos/make_icon.swift    draws the app icon (a monoline "fi" ligature)
 
 ## Licenses
 
-Google Fonts families are open source, mostly under the SIL Open Font License. Fontshare families use either the SIL Open Font License or the ITF Free Font License, which allows free personal and commercial use. Each family's license is shown in its details panel. Check it before redistributing font files.
+Ligatures itself is released under the [MIT License](LICENSE).
+
+The fonts it installs are not part of Ligatures and keep their own licenses. Google Fonts families are open source, mostly under the SIL Open Font License. Fontshare families use either the SIL Open Font License or the ITF Free Font License, which allows free personal and commercial use. Each family's license is shown in its details panel. Check it before redistributing font files.
 
 ## Notes
 
