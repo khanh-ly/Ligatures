@@ -4,6 +4,12 @@
 
 > Not affiliated with or endorsed by Google or Indian Type Foundry. "Google Fonts" is a trademark of Google LLC; Fontshare is a service of Indian Type Foundry.
 
+## Download
+
+**[Download Ligatures for Mac](https://github.com/khanh-ly/Ligatures/releases/latest/download/Ligatures.zip)** (macOS 12 or later, Apple silicon or Intel), or see all [releases](https://github.com/khanh-ly/Ligatures/releases).
+
+Unzip it and drag **Ligatures** into your Applications folder. The app isn't notarized by Apple, so the first time you open it, macOS asks you to approve it in System Settings; see [On another Mac](#on-another-mac) for the steps.
+
 ## Features
 
 - **Browse two libraries.** The full Google Fonts catalog (about 1,950 families) plus Fontshare's free families (about 65 more), with live previews in your own text and size. Families that both libraries offer are shown once, from Google Fonts.
