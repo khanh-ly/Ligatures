@@ -108,10 +108,12 @@ Uninstalled fonts go to the Trash. If the Trash can't be used, they're kept in a
 fontmanager.py           terminal server: catalog, install/uninstall, favorites, new-font check
 index.html               the whole interface (HTML, CSS and JavaScript in one file)
 build_app.sh             builds the app and a zip for other Macs (--install copies it to /Applications)
+make_screenshots.sh      regenerates the README screenshots in docs/
 macos/main.swift         native app window
 macos/FontServer.swift   the app's built-in server (Swift port of fontmanager.py)
 macos/Info.plist         app bundle settings
 macos/make_icon.swift    draws the app icon (a monoline "fi" ligature)
+macos/make_screenshot.swift  renders a screenshot mockup (used by make_screenshots.sh)
 docs/                    README screenshots (light and dark)
 ```
 
@@ -126,3 +128,4 @@ The fonts it installs are not part of Ligatures and keep their own licenses. Goo
 - The Mac app is ad hoc signed, not notarized. See [On another Mac](#on-another-mac) for opening it elsewhere.
 - After changing `index.html`, run `./build_app.sh --install` again, because the app bundles its own copy.
 - Server changes need making in both `fontmanager.py` and `macos/FontServer.swift` to keep the two versions in step.
+- After design changes, run `./make_screenshots.sh` to refresh the README screenshots. It uses a temporary server with empty data, so your own installed fonts and favorites never appear.
