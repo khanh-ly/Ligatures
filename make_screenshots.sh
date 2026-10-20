@@ -28,7 +28,7 @@ done
 
 mkdir -p "$OUT"
 for mode in light dark; do
-  echo "Rendering $mode…"
+  echo "Rendering ${mode}…"
   "$WORK/make_screenshot" "http://127.0.0.1:$PORT/" "$OUT/screenshot-$mode.png" "$mode"
 done
 echo "Saved $OUT/screenshot-light.png and $OUT/screenshot-dark.png"

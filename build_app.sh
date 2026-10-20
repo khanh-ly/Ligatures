@@ -10,7 +10,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" build/tmp
 # One binary for Apple silicon and Intel Macs, running on macOS 12 and later.
 MIN_MACOS=12.0
 for ARCH in arm64 x86_64; do
-  echo "Compiling for $ARCH…"
+  echo "Compiling for ${ARCH}…"
   swiftc -O -swift-version 5 -target "$ARCH-apple-macos$MIN_MACOS" -o "build/tmp/Ligatures-$ARCH" \
     macos/main.swift macos/FontServer.swift -framework Cocoa -framework WebKit -framework Network
 done
